@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ml-bash-pipeline-
+spec:
+  entrypoint: ml-dag
+
+  volumes:
+    - name: model-storage
+      persistentVolumeClaim:
+        claimName: model-pvc
+
+  templates:
+    - name: ml-dag
+      dag:
+        tasks:
+          - name: train
+            template: train-template
+          - name: serve-deployer
+            template: serve-deployer-template
+            depends: "train"
+
+    - name: train-template
+      container:
+        image: alpine:latest
+        command: ["sh", "-c"]
+        args:
+          - |
+            echo "model_v1_weights: [0.99, 0.01]" > /mnt/model/weights.txt
+            echo "train complete"
+        volumeMounts:
+          - name: model-storage
+            mountPath: /mnt/model
+
+    - name: serve-deployer-template
+      container:
+        image: bitnami/kubectl:latest
+        command: ["sh", "-c"]
+        args:
+          - |
+            cat <<EOF | kubectl -n argo apply -f -
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: model-server-pod
+              labels:
+                app: model-server
+            spec:
+              volumes:
+                - name: model-storage
+                  persistentVolumeClaim:
+                    claimName: model-pvc
+              containers:
+                - name: server
+                  image: alpine:latest
+                  ports:
+                    - containerPort: 8080
