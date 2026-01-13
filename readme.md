@@ -26,25 +26,25 @@ The pipeline is orchestrated using Argo Workflows and implemented as a DAG. Trai
 
 Clone the repository:
 
-----
+
 git clone https://github.com/surajsi-git/mlops-kind-argo.git
 cd mlops-kind-argo
-----
+
 
 Run the pipeline:
 
 On Linux/macOS/WSL2:
 
-----
+
 chmod +x run.sh
 ./run.sh
-----
+
 
 On Windows (Git Bash):
 
-----
+
 sh run.sh
-----
+
 
 The script will create a kind cluster, install Argo Workflows, apply the PVC manifest, and submit the workflow.
 
@@ -52,41 +52,41 @@ The script will create a kind cluster, install Argo Workflows, apply the PVC man
 
 After the workflow completes, port-forward the service:
 
-----
+
 kubectl port-forward -n argo svc/model-service 8080:80
-----
+
 
 Health check:
 
-----
+
 curl -s http://localhost:8080/health
-----
+
 
 Prediction request (note: the current training step uses n_features=4, so send 4 values):
 
 Linux/macOS/WSL2:
 
-----
+
 curl -s -X POST http://localhost:8080/predict -H "Content-Type: application/json" -d '{"features":[1.0,2.0,-0.5,1.1]}'
-----
+
 
 Windows PowerShell:
 
-----
+
 Invoke-RestMethod -Uri http://localhost:8080/predict -Method Post -Body '{"features":[1.0,2.0,-0.5,1.1]}' -ContentType "application/json"
-----
+
 
 Example response:
 
-----
+
 {"prediction": 1}
-----
+
 
 [+] Cleanup
 
 To remove the local environment:
 
-----
+
 kind delete cluster --name ml-local
-----
+
 
