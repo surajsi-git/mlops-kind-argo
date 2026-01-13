@@ -4,8 +4,7 @@ metadata:
   name: model-pvc
   namespace: argo
 spec:
-  accessModes:
-    - ReadWriteOnce
+  accessModes: [ "ReadWriteOnce" ]
   resources:
     requests:
       storage: 1Gi

@@ -5,77 +5,88 @@ metadata:
 spec:
   entrypoint: ml-dag
   volumes:
-    - name: model-storage
-      persistentVolumeClaim:
-        claimName: model-pvc
+  - name: model-storage
+    persistentVolumeClaim:
+      claimName: model-pvc
+  - name: code-volume
+    configMap:
+      name: model-server-code
 
   templates:
-    - name: ml-dag
-      dag:
-        tasks:
-          - name: train
-            template: train-template
-          - name: serve-deployer
-            template: serve-deployer-template
-            depends: "train"
+  - name: ml-dag
+    dag:
+      tasks:
+      - name: train
+        template: train-template
+      - name: serve-deployer
+        template: serve-deployer-template
+        depends: "train"
 
-    - name: train-template
-      container:
-        image: python:3.9-slim
-        command: ["sh", "-c"]
-        args:
-          - |
-            pip install scikit-learn joblib --quiet
-            python3 -c "
-            from sklearn.datasets import make_classification
-            from sklearn.linear_model import LogisticRegression
-            import joblib
-            X, y = make_classification(n_samples=100, n_features=4)
-            model = LogisticRegression().fit(X, y)
-            joblib.dump(model, '/mnt/model/model.joblib')
-            "
-        volumeMounts:
-          - name: model-storage
-            mountPath: /mnt/model
+  - name: train-template
+    container:
+      image: python:3.9-slim
+      command: ["sh", "-c"]
+      args:
+        - |
+          pip install scikit-learn joblib --quiet
+          python3 -c "
+          from sklearn.datasets import make_classification
+          from sklearn.linear_model import LogisticRegression
+          import joblib
+          X, y = make_classification(n_samples=100, n_features=4)
+          model = LogisticRegression().fit(X, y)
+          joblib.dump(model, '/mnt/model/model.joblib')
+          print('Model trained and saved.')
+          "
+      volumeMounts:
+      - name: model-storage
+        mountPath: /mnt/model
 
-    - name: serve-deployer-template
-      container:
-        image: bitnami/kubectl:latest
-        command: ["sh", "-c"]
-        args:
-          - |
-            cat <<EOF | kubectl apply -f -
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              name: model-server-pod
-            spec:
-              volumes:
-                - name: model-storage
-                  persistentVolumeClaim:
-                    claimName: model-pvc
-              containers:
-              - name: server
-                image: python:3.9-slim
-                ports:
-                  - containerPort: 8080
-                command: ["sh", "-c"]
-                args: 
-                  - |
-                    pip install fastapi uvicorn scikit-learn joblib --quiet
-                    python3 -c "
-                    import uvicorn
-                    from fastapi import FastAPI
-                    import joblib
-                    app = FastAPI()
-                    model = joblib.load('/mnt/model/model.joblib')
-                    @app.post('/predict')
-                    def predict(features: list):
-                        return {'res': 'test'}
-                    if __name__ == '__main__':
-                        uvicorn.run(app, host='0.0.0.0', port=8080)
-                    "
-                volumeMounts:
-                  - name: model-storage
-                    mountPath: /mnt/model
-            EOF
+  - name: serve-deployer-template
+    container:
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c"]
+      args: 
+        - |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: model-server-pod
+            namespace: argo
+            labels:
+              app: model-server
+          spec:
+            volumes:
+            - name: model-storage
+              persistentVolumeClaim:
+                claimName: model-pvc
+            - name: code-volume
+              configMap:
+                name: model-server-code
+            containers:
+            - name: server
+              image: python:3.9-slim
+              ports:
+              - containerPort: 8080
+              command: ["sh", "-c"]
+              args:
+                - "pip install fastapi uvicorn scikit-learn joblib python-multipart --quiet && python /app/server.py"
+              volumeMounts:
+              - name: model-storage
+                mountPath: /mnt/model
+              - name: code-volume
+                mountPath: /app
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: model-service
+            namespace: argo
+          spec:
+            selector:
+              app: model-server
+            ports:
+            - port: 80
+              targetPort: 8080
+          EOF

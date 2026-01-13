@@ -1,28 +1,16 @@
-# mlops kind argo pipeline
+Finally got everything working perfectly. All the bugs from the last few tries are squashed.
 
-this repo contains a simple local pipeline using kind and argo workflows.
+Updates:
+- FastAPI fixed: Added the `Body(...)` thing so it stops complaining about missing fields when I curl it.
+- Dependencies: Made sure `python-multipart` is installed in the pod startup so it doesnt crash on launch.
+- Cleanup: Updated `run.sh` to delete old pods and services first, otherwise redeploying was failing because names already existed.
+- ConfigMap: Kept the server code in the configmap, its way easier to manage than nesting it in the yaml.
 
-goal:
-create a local k8s cluster using kind
-run an argo workflow with two steps (train -> serve)
-share artifacts between steps using a pvc
+Deployment:
+1. `./run.sh`
+2. Wait for the green checks in Argo.
+3. `kubectl port-forward -n argo svc/model-service 8080:80`
+4. Run the curl test:
+   `curl -X POST http://localhost:8080/predict -H "Content-Type: application/json" -d "[1.0, 2.0, -0.5, 1.1]"`
 
-running:
-- setup steps and commands will be added incrementally
-
-
----
-## local notes (wip)
-
-
-fixed the yaml issues. used the pipe | for the shell commands so the colons dont break the parser anymore. the argo workflow now actually finishes both steps.
-
-## current issues:
-- the pod is created but it keeps crashing. logs show "RuntimeError: Form data requires python-multipart". 
-- tried to port-forward but I forgot to make a Service, and doing it to the pod directly is annoying because the name keeps changing if I redeploy.
-- I need to load the model properly and return real predictions, right now its just returning 'test'.
-
-## todo:
-- install python-multipart in the server pod
-- add a Kubernetes Service manifest
-- figure out why the python code is so messy inside the yaml file. maybe use a configmap?
+It finally returns the prediction JSON!
