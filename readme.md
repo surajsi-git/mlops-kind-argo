@@ -14,27 +14,15 @@ running:
 ---
 ## local notes (wip)
 
-simplfied repo structure for now, kept every manifest in the root folder, will decide folder structure once the later stages of assignment are achieved
 
+updated the workflow to use real python instead of just echo strings
+added scikit-learn to training step to make a real model.joblib file
 
-prereqs:
-- docker
-- kubectl
-- kind
-- argo workflows installed in the cluster (wip)
+## Current status:
+Workflow is failing. i keep getting "mapping values are not allowed in this context" error when i try to run `argo submit`. 
+I think its something with the way i am putting the python code inside the yaml file but not sure.
 
-create kind cluster:
-kind create cluster --name ml-local
-
-create argo namespace:
-kubectl create ns argo
-
-apply pvc:
-kubectl apply -f infra/pvc.yaml
-
-apply workflow:
-kubectl apply -f workflows/workflow.yaml
-
-check:
-kubectl -n argo get pods
-kubectl -n argo get wf
+## to do:
+- fix the yaml syntax error
+- actually load the model in the server pod
+- add a service so we can port-forward properly (pod only right now)
