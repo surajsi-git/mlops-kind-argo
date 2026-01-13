@@ -25,8 +25,15 @@ spec:
         command: ["sh", "-c"]
         args:
           - |
-            pip install scikit-learn joblib
-            python3 -c "from sklearn.datasets import make_classification; from sklearn.linear_model import LogisticRegression; import joblib; X, y = make_classification(); model = LogisticRegression().fit(X, y); joblib.dump(model, '/mnt/model/model.joblib')"
+            pip install scikit-learn joblib --quiet
+            python3 -c "
+            from sklearn.datasets import make_classification
+            from sklearn.linear_model import LogisticRegression
+            import joblib
+            X, y = make_classification(n_samples=100, n_features=4)
+            model = LogisticRegression().fit(X, y)
+            joblib.dump(model, '/mnt/model/model.joblib')
+            "
         volumeMounts:
           - name: model-storage
             mountPath: /mnt/model
@@ -43,15 +50,32 @@ spec:
             metadata:
               name: model-server-pod
             spec:
+              volumes:
+                - name: model-storage
+                  persistentVolumeClaim:
+                    claimName: model-pvc
               containers:
               - name: server
                 image: python:3.9-slim
-                command: ["python3", "-c"]
-                args: ["
-                import uvicorn
-                from fastapi import FastAPI
-                app = FastAPI()
-                if __name__ == '__main__': 
-                    uvicorn.run(app)
-                "]
+                ports:
+                  - containerPort: 8080
+                command: ["sh", "-c"]
+                args: 
+                  - |
+                    pip install fastapi uvicorn scikit-learn joblib --quiet
+                    python3 -c "
+                    import uvicorn
+                    from fastapi import FastAPI
+                    import joblib
+                    app = FastAPI()
+                    model = joblib.load('/mnt/model/model.joblib')
+                    @app.post('/predict')
+                    def predict(features: list):
+                        return {'res': 'test'}
+                    if __name__ == '__main__':
+                        uvicorn.run(app, host='0.0.0.0', port=8080)
+                    "
+                volumeMounts:
+                  - name: model-storage
+                    mountPath: /mnt/model
             EOF

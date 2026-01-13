@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
 
-# setup kind
-kind create cluster --name ml-local || echo "cluster already there"
+echo "cleaning up old stuff..."
+argo delete -n argo --all || true
+kubectl delete pod model-server-pod -n argo --ignore-not-found
 
-# argo install
-kubectl create ns argo || true
-kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/latest/download/quick-start-minimal.yaml
-
-# storage
 kubectl apply -f pvc.yaml
 
-# run it
+echo "submitting argo..."
 argo submit -n argo workflow.yaml --watch
+
+echo "pipeline done. try port forward now"
+
+kubectl port-forward -n argo pod/model-server-pod 8080:8080

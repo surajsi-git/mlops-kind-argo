@@ -15,14 +15,14 @@ running:
 ## local notes (wip)
 
 
-updated the workflow to use real python instead of just echo strings
-added scikit-learn to training step to make a real model.joblib file
+fixed the yaml issues. used the pipe | for the shell commands so the colons dont break the parser anymore. the argo workflow now actually finishes both steps.
 
-## Current status:
-Workflow is failing. i keep getting "mapping values are not allowed in this context" error when i try to run `argo submit`. 
-I think its something with the way i am putting the python code inside the yaml file but not sure.
+## current issues:
+- the pod is created but it keeps crashing. logs show "RuntimeError: Form data requires python-multipart". 
+- tried to port-forward but I forgot to make a Service, and doing it to the pod directly is annoying because the name keeps changing if I redeploy.
+- I need to load the model properly and return real predictions, right now its just returning 'test'.
 
-## to do:
-- fix the yaml syntax error
-- actually load the model in the server pod
-- add a service so we can port-forward properly (pod only right now)
+## todo:
+- install python-multipart in the server pod
+- add a Kubernetes Service manifest
+- figure out why the python code is so messy inside the yaml file. maybe use a configmap?
