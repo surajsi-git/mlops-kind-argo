@@ -50,7 +50,6 @@ After the workflow completes, port-forward the service:
 
     kubectl port-forward -n argo svc/model-service 8080:80
 
-
 Health check:
 
     curl -s http://localhost:8080/health

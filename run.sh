@@ -3,7 +3,7 @@ set -e
 
 # 1. Cluster Setup
 if ! kind get clusters | grep -q "ml-local"; then
-  echo "🎡 Creating Kind Cluster..."
+  echo "Creating Kind Cluster..."
   kind create cluster --name ml-local
 else
   echo "Cluster already exists."
